@@ -1,0 +1,27 @@
+title: Suspicious Encoded PowerShell Command Execution
+id: 8a7b3c21-4f5e-4a1b-9c2d-1e3f4a5b6c7d
+status: experimental
+description: Detects PowerShell executed with an encoded command argument (-EncodedCommand / -enc / -e), a common technique used by attackers to obfuscate malicious commands and evade keyword-based detection.
+author: Andrew Muravitsky
+date: 2026-08-23
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1027/
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.defense_evasion
+  - attack.t1027
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\powershell.exe'
+    # Matches any prefix PowerShell accepts for -EncodedCommand (-e, -en, -enc, -enco ... -encodedcommand),
+    # with '-', '/' or a unicode dash as the parameter prefix, and ' ' or ':' as the value separator.
+    CommandLine|re|i: '(?:^|\s)[-/–—―]e(?:c|n(?:c(?:o(?:d(?:e(?:d(?:c(?:o(?:m(?:m(?:a(?:n(?:d)?)?)?)?)?)?)?)?)?)?)?)?)?[\s:]'
+  condition: selection
+falsepositives:
+  - Some legitimate administrative scripts or software may use encoded commands, though it is uncommon. Tune by baselining known-good encoded-command usage in your environment.
+level: high
