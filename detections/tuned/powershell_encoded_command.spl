@@ -1,0 +1,15 @@
+``` HAND-TUNED deployment variant of detections/generated/powershell_encoded_command.spl.
+    Edited by hand; convert.py never writes here. Re-check against the generated
+    base whenever the Sigma rule changes.
+
+    Deltas from the generated query:
+      1. index=main            -- scope to the lab index.
+      2. source="*WinEventLog:..." -- leading wildcard so it matches whether the
+         forwarder ships the Sysmon channel as XmlWinEventLog: or WinEventLog:.
+      3. CommandLine pre-filter -- cheap wildcard terms evaluated before `regex`,
+         which is a post-retrieval command. The five terms are a strict superset of
+         the regex (every match contains a dash-or-slash immediately followed by e),
+         so this reduces what the regex reads, never what the rule can match. ```
+index=main source="*WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 Image="*\\powershell.exe"
+  (CommandLine="*-e*" OR CommandLine="*/e*" OR CommandLine="*–e*" OR CommandLine="*—e*" OR CommandLine="*―e*")
+| regex CommandLine="(?i)(?:^|\\s)[-/–—―]e(?:c|n(?:c(?:o(?:d(?:e(?:d(?:c(?:o(?:m(?:m(?:a(?:n(?:d)?)?)?)?)?)?)?)?)?)?)?)?)?[\\s:]"

@@ -63,18 +63,43 @@ Each detection follows the same workflow:
 
 ## Detections
 
-| Rule | Technique(s) | Detects | Log Source | Level | Status |
-|---|---|---|---|---|---|
-| [powershell_encoded_command.yml](detections/powershell_encoded_command.yml) | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) — PowerShell<br>[T1027](https://attack.mitre.org/techniques/T1027/) — Obfuscated Files or Information | PowerShell launched with an encoded command argument, covering every abbreviation the CLI accepts (`-e` through `-EncodedCommand`) plus alternate parameter prefixes | Sysmon / `process_creation` | High | Experimental |
+| Rule (Sigma) | Deployment (SPL) | Technique(s) | Detects | Log Source | Level | Status |
+|---|---|---|---|---|---|---|
+| [powershell_encoded_command.yml](detections/powershell_encoded_command.yml) | [generated](detections/generated/powershell_encoded_command.spl) · [tuned](detections/tuned/powershell_encoded_command.spl) | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) — PowerShell<br>[T1027](https://attack.mitre.org/techniques/T1027/) — Obfuscated Files or Information | PowerShell launched with an encoded command argument, covering every abbreviation the CLI accepts (`-e` through `-EncodedCommand`) plus alternate parameter prefixes | Sysmon / `process_creation` | High | Experimental |
+
+### Deployment
+
+Sigma is the source of truth. Nothing downstream is written by hand twice:
+
+```
+detections/*.yml  ──convert.py──▶  detections/generated/*.spl  ──hand-tune──▶  detections/tuned/*.spl
+  Sigma rule          pySigma          backend output, never          lab deployment query
+  (source of truth)                    edited by hand                 (documented deltas)
+```
+
+**Generated.** [`convert.py`](convert.py) compiles every rule through the pySigma Splunk backend and writes `detections/generated/`. Two pipelines are chained: `sysmon` resolves the rule's `category: process_creation` logsource to the Sysmon channel and `EventCode`, and `splunk_windows` renders the Windows logsource as Splunk field terms. The first is not optional — without it a category-based rule compiles with no log-source scoping at all, which is why the Sigma rule carries no hardcoded `EventID` of its own.
+
+```bash
+python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
+./venv/bin/python convert.py            # regenerate
+./venv/bin/python convert.py --check    # fail if generated output is stale
+```
+
+**Tuned.** Generated queries are portable but not deployment-ready, so `detections/tuned/` holds the variant that actually runs in the lab, with every delta documented in the file header. For the encoded-PowerShell rule those are: the lab `index`, a leading-wildcard `source` so the query works whether the forwarder ships the channel as `XmlWinEventLog:` or `WinEventLog:`, and a wildcard pre-filter ahead of `regex` — a post-retrieval command — so the expensive match only evaluates candidate events. The pre-filter terms are a strict superset of the regex, so they reduce what it reads and never what the rule can match.
 
 ## Repo Structure
 
 ```
 .
-├── detections/    Sigma rules — the detection logic, one rule per file
-├── attacks/       Atomic Red Team execution notes, mapped to ATT&CK technique IDs
-├── telemetry/     Sample captured logs backing each detection
-└── docs/          Writeups and screenshots from the detection development process
+├── convert.py         Compiles Sigma rules to SPL via pySigma (detection-as-code build step)
+├── requirements.txt   Pinned toolchain: pySigma, Splunk backend, Sysmon pipeline
+├── detections/
+│   ├── *.yml          Sigma rules — the source of truth, one rule per file
+│   ├── generated/     Backend output from convert.py — never edited by hand
+│   └── tuned/         Deployment queries: generated base + documented lab deltas
+├── attacks/           Atomic Red Team execution notes, mapped to ATT&CK technique IDs
+├── telemetry/         Sample captured logs backing each detection
+└── docs/              Writeups and screenshots from the detection development process
 ```
 
 ## Skills Demonstrated

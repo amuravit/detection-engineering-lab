@@ -1,0 +1,13 @@
+# Detection-as-code toolchain: compiles Sigma rules to SIEM queries.
+# Install:  python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
+# Compile:  ./venv/bin/python convert.py
+
+pySigma==1.5.0
+pysigma-backend-splunk==2.1.0
+
+# Resolves `category: process_creation` to the Sysmon channel + EventCode.
+# Without it, category-based rules compile with no log-source scoping.
+pysigma-pipeline-sysmon==2.0.0
+
+# Optional: `sigma convert -t splunk -p splunk_windows <rule>` for one-off conversions.
+sigma-cli==3.1.0
