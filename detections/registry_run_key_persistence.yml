@@ -1,0 +1,23 @@
+title: Registry Run Key Persistence
+id: 3d2f9a14-7c6b-4e2a-b1f8-9a0c5d4e6f21
+status: experimental
+description: Detects creation or modification of a value under a Windows Registry "Run" key, a common persistence mechanism used to auto-execute a program at user logon or system boot.
+author: Andrew Muravitsky
+date: 2026-09-19
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+tags:
+  - attack.persistence
+  - attack.t1547.001
+logsource:
+  product: windows
+  category: registry_set
+detection:
+  selection:
+    TargetObject|contains:
+      - '\CurrentVersion\Run\'
+      - '\CurrentVersion\RunOnce\'
+  condition: selection
+falsepositives:
+  - Legitimate software that registers itself for auto-start at logon writes to Run keys. Baseline known-good applications in your environment and tune with an allowlist of expected Image paths or Run key value names.
+level: medium
